@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система бронирования погружений</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .status {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        
+        .booking-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .booking-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .card h2 {
+            color: #2a5298;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #2a5298;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #2a5298;
+        }
+        
+        .required::after {
+            content: " *";
+            color: red;
+        }
+        
+        .slots-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .slots-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .slot {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f9f9f9;
+        }
+        
+        .slot:hover {
+            border-color: #2a5298;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .slot.selected {
+            border-color: #2a5298;
+            background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+            color: white;
+        }
+        
+        .slot h4 {
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+        
+        .slot p {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .slot.selected p {
+            color: white;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(42, 82, 152, 0.4);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(42, 82, 152, 0.6);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .success-message {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .success-message h3 {
+            font-size: 2em;
+            margin-bottom: 15px;
+        }
+        
+        .success-message p {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #2a5298;
+            border: 2px solid #2a5298;
+            margin-top: 10px;
+        }
+        
+        .btn-secondary:hover {
+            background: #2a5298;
+            color: white;
+        }
+        
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            padding: 20px;
+            font-size: 0.9em;
+        }
+        
+        a {
+            color: #4ade80;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏊 Система бронирования погружений</h1>
+            <div class="status" id="connectionStatus">Проверка подключения к системе...</div>
+        </header>
+        
+        <div class="booking-container">
+            <div class="card">
+                <h2>📅 Дата и время погружения</h2>
+                
+                <div class="form-group">
+                    <label class="required">Дата погружения</label>
+                    <input type="date" id="bookingDate" min="" required>
+                </div>
+                
+                <label>Выберите время:</label>
+                <div class="slots-container" id="slotsContainer">
+                    <!-- Слоты будут загружены динамически -->
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>👤 Данные для бронирования</h2>
+                
+                <div class="form-group">
+                    <label class="required">Код агента</label>
+                    <input type="text" id="agentCode" placeholder="AGENT001" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required">Имя агента</label>
+                    <input type="text" id="agentName" placeholder="Иванов Иван Иванович" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required">Телефон агента</label>
+                    <input type="tel" id="agentPhone" placeholder="+7 (999) 111-22-33" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required">Имя клиента</label>
+                    <input type="text" id="clientName" placeholder="Алексей Петров" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required">Телефон клиента</label>
+                    <input type="tel" id="clientPhone" placeholder="+7 (912) 345-67-89" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required">Количество мест</label>
+                    <select id="seatsCount" required>
+                        <option value="">Выберите количество</option>
+                        <option value="1">1 место</option>
+                        <option value="2">2 места</option>
+                        <option value="3">3 места</option>
+                        <option value="4">4 места</option>
+                        <option value="5">5 мест</option>
+                        <option value="6">6 мест</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Адрес клиента</label>
+                    <input type="text" id="clientAddress" placeholder="г. Сочи, ул. Морская, 15">
+                </div>
+                
+                <div class="form-group">
+                    <label>Примечания</label>
+                    <textarea id="clientNotes" rows="3" placeholder="Новички, нужен инструктор"></textarea>
+                </div>
+                
+                <button class="btn" id="bookBtn" onclick="bookDiving()">
+                    ✅ Забронировать погружение
+                </button>
+            </div>
+        </div>
+        
+        <div class="success-message" id="successMessage">
+            <h3>🎉 Бронирование успешно создано!</h3>
+            <p>Ваше бронирование подтверждено. Детали отправлены на вашу почту.</p>
+            <button class="btn btn-secondary" onclick="resetForm()">Создать новое бронирование</button>
+        </div>
+        
+        <footer>
+            <a href="admin.html">📊 Перейти в админ-панель →</a>
+        </footer>
+    </div>
+
+    <script>
+        // === НАСТРОЙКИ SUPABASE ===
+        const SUPABASE_URL = 'https://tiwtotwshzyhqbnxwyru.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpd3RvdHdzaHp5aHFibnh3eXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0NTQ5NjcsImV4cCI6MjA4NjAzMDk2N30.GIJQkMmRQ7jXX_lg-_Mdixus-f4I-IZGBYdH3m3Ti4U';
+        
+        const supabase = supabase.create({
+            url: SUPABASE_URL,
+            key: SUPABASE_KEY
+        });
+        
+        let selectedSlot = null;
+        let availableSlots = {};
+        
+        // Проверка подключения
+        async function checkConnection() {
+            try {
+                const { data, error } = await supabase.from('bookings').select('id').limit(1);
+                if (error) throw error;
+                document.getElementById('connectionStatus').textContent = '✅ Система готова к работе';
+                document.getElementById('connectionStatus').style.background = 'rgba(16, 185, 129, 0.2)';
+                loadDefaultDate();
+            } catch (error) {
+                document.getElementById('connectionStatus').textContent = '❌ Ошибка подключения: ' + error.message;
+                document.getElementById('connectionStatus').style.background = 'rgba(239, 68, 68, 0.2)';
+                console.error('Ошибка подключения:', error);
+            }
+        }
+        
+        // Установка даты по умолчанию (сегодня)
+        function loadDefaultDate() {
+            const today = new Date();
+            const minDate = today.toISOString().split('T')[0];
+            document.getElementById('bookingDate').value = minDate;
+            document.getElementById('bookingDate').min = minDate;
+            loadSlots(minDate);
+        }
+        
+        // Загрузка слотов для выбранной даты
+        async function loadSlots(date) {
+            try {
+                const slots = ['morning', 'afternoon', 'evening'];
+                const slotNames = {
+                    'morning': '🌅 Утро (9:00 - 12:00)',
+                    'afternoon': '☀️ День (12:00 - 16:00)',
+                    'evening': '🌇 Вечер (16:00 - 20:00)'
+                };
+                
+                const container = document.getElementById('slotsContainer');
+                container.innerHTML = '<div style="grid-column: span 3; text-align: center; padding: 20px;"><div class="loading"></div> Загрузка доступности...</div>';
+                
+                availableSlots = {};
+                
+                for (const slot of slots) {
+                    const { data, error } = await supabase.rpc('check_slot_availability', {
+                        p_date: date,
+                        p_slot: slot
+                    });
+                    
+                    if (error) throw error;
+                    
+                    availableSlots[slot] = data;
+                }
+                
+                // Отображение слотов
+                container.innerHTML = '';
+                slots.forEach(slot => {
+                    const available = availableSlots[slot];
+                    const slotDiv = document.createElement('div');
+                    slotDiv.className = 'slot';
+                    slotDiv.innerHTML = `
+                        <h4>${slotNames[slot]}</h4>
+                        <p>Мест: ${available}/6</p>
+                    `;
+                    
+                    if (available > 0) {
+                        slotDiv.onclick = () => selectSlot(slot);
+                    } else {
+                        slotDiv.style.opacity = '0.5';
+                        slotDiv.style.cursor = 'not-allowed';
+                        slotDiv.title = 'Нет свободных мест';
+                    }
+                    
+                    container.appendChild(slotDiv);
+                });
+                
+            } catch (error) {
+                console.error('Ошибка загрузки слотов:', error);
+                alert('Ошибка загрузки доступности слотов: ' + error.message);
+            }
+        }
+        
+        // Выбор слота
+        function selectSlot(slot) {
+            // Снимаем выделение со всех
+            document.querySelectorAll('.slot').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // Выделяем выбранный
+            const slots = document.querySelectorAll('.slot');
+            const index = ['morning', 'afternoon', 'evening'].indexOf(slot);
+            if (index !== -1) {
+                slots[index].classList.add('selected');
+            }
+            
+            selectedSlot = slot;
+        }
+        
+        // Бронирование
+        async function bookDiving() {
+            try {
+                // Валидация
+                if (!selectedSlot) {
+                    alert('Пожалуйста, выберите время погружения');
+                    return;
+                }
+                
+                const seats = parseInt(document.getElementById('seatsCount').value);
+                if (seats > availableSlots[selectedSlot]) {
+                    alert(`К сожалению, доступно только ${availableSlots[selectedSlot]} мест в выбранном слоте`);
+                    return;
+                }
+                
+                // Собираем данные
+                const bookingData = {
+                    booking_date: document.getElementById('bookingDate').value,
+                    slot_time: selectedSlot,
+                    seats_count: seats,
+                    agent_code: document.getElementById('agentCode').value.trim(),
+                    agent_name: document.getElementById('agentName').value.trim(),
+                    agent_phone: document.getElementById('agentPhone').value.trim(),
+                    client_name: document.getElementById('clientName').value.trim(),
+                    client_phone: document.getElementById('clientPhone').value.trim(),
+                    client_address: document.getElementById('clientAddress').value.trim() || null,
+                    client_notes: document.getElementById('clientNotes').value.trim() || null,
+                    status: 'confirmed'
+                };
+                
+                // Проверка обязательных полей
+                for (const key of ['agent_code', 'agent_name', 'agent_phone', 'client_name', 'client_phone']) {
+                    if (!bookingData[key]) {
+                        alert('Пожалуйста, заполните все обязательные поля');
+                        return;
+                    }
+                }
+                
+                // Отправка в базу
+                document.getElementById('bookBtn').disabled = true;
+                document.getElementById('bookBtn').innerHTML = '<div class="loading"></div> Создание бронирования...';
+                
+                const { data, error } = await supabase
+                    .from('bookings')
+                    .insert([bookingData]);
+                
+                if (error) throw error;
+                
+                // Успех!
+                document.querySelector('.booking-container').style.display = 'none';
+                document.getElementById('successMessage').style.display = 'block';
+                
+                console.log('Бронирование создано:', data);
+                
+            } catch (error) {
+                console.error('Ошибка бронирования:', error);
+                alert('Ошибка создания бронирования: ' + error.message);
+            } finally {
+                document.getElementById('bookBtn').disabled = false;
+                document.getElementById('bookBtn').textContent = '✅ Забронировать погружение';
+            }
+        }
+        
+        // Сброс формы
+        function resetForm() {
+            document.querySelector('.booking-container').style.display = 'grid';
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('seatsCount').value = '';
+            document.getElementById('clientAddress').value = '';
+            document.getElementById('clientNotes').value = '';
+            document.querySelectorAll('.slot').forEach(el => {
+                el.classList.remove('selected');
+            });
+            selectedSlot = null;
+        }
+        
+        // Обработчик изменения даты
+        document.getElementById('bookingDate').addEventListener('change', function(e) {
+            loadSlots(e.target.value);
+            selectedSlot = null;
+            document.querySelectorAll('.slot').forEach(el => {
+                el.classList.remove('selected');
+            });
+        });
+        
+        // Инициализация
+        checkConnection();
+    </script>
+</body>
+</html>
